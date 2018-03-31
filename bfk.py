@@ -1,12 +1,14 @@
-from sys import stdout, stdin
-
+import fileinput
+import sys
+import os
 class MemoryIndexError(Exception):
     pass
 
 class Machine:
     def __init__(self, mem_size=30000):
         self.MEM = bytearray(mem_size)
-        self.CODE = b''
+        self.last_while_enter = None
+        self.CODE = []
         self.data_ptr = 0
         self.code_ptr = 0
         self.commands = {
@@ -36,6 +38,26 @@ class Machine:
     def dec_value(self):
         self.MEM[self.data_ptr] -= 1
 
+    def find_while_exit(self):
+        bracket_counter = 1
+        self.code_ptr += 1
+        while True:
+            if self.CODE[self.code_ptr] == ']':
+                bracket_counter += 1
+            if self.CODE[self.code_ptr] == '[':
+                bracket_counter -= 1
+            if bracket_counter == 0:
+                break
+            self.code_ptr += 1
+
+    def while_enter(self):
+        self.last_while_enter = self.code_ptr
+        if self.MEM[self.data_ptr] == 0:
+            self.code_ptr = self.find_while_exit()
+
+    def while_loop(self):
+        if self.MEM[self.data_ptr] != 0:
+            self.code_ptr = self.last_while_enter
 
     def getch(self):
         ch = ''
@@ -44,7 +66,7 @@ class Machine:
         self.MEM[self.data_ptr] = ord(ch)
 
     def putch(self):
-        print(chr(self.MEM[self.data_ptr]))
+        sys.stdout.write(chr(self.MEM[self.data_ptr]))
 
     def reset(self):
         for i, _ in enumerate(self.MEM):
@@ -59,8 +81,16 @@ class Machine:
         if code is not None:
             self.reset()
             self.load(code)
+        while self.code_ptr < len(self.CODE):
+            instruction = self.CODE[self.code_ptr]
+            if instruction in self.commands:
+                self.commands[instruction]()
+            self.code_ptr += 1
 
 if __name__ == '__main__':
+    # Hello World code
+    # '++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>.'
     machine = Machine()
-    code = '++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>.'
+    code = sys.argv[1]
     machine.run(code)
+    sys.stdout.write(os.sep)
